@@ -9,12 +9,29 @@ The script only runs `git fetch`; it does not run `git pull`, merge, rebase, or 
 The following is representative output using fictional repository names and values; it was not captured from a user's machine:
 
 ```text
-  1. [GITHUB]       ↑0   ↓3    v2.4.1               ./example-service
-  2. [GITHUB]       ↑1   ↓0    v1.8.0               ./example-theme
-  3. [LOCAL]        ↑-   ↓-    -                    ./scratch-notes
+ 1. [LOCAL]        ↑-   ↓-    -                    ./projects/scratch-notes
+  2. [GITHUB]       ↑0   ↓0    v2.4.1               ./projects/example-service
+  3. [GITHUB]       ↑1   ↓0    v1.8.0 NEW           ./projects/example-theme
+  4. [GITHUB]       ↑0   ↓4    -                    ./projects/example-library
 ```
 
+This is representative output using fictional repository names, paths, versions, and commit counts; it was not captured from a user's machine.
+
 `↑` is the number of local commits not present in the upstream branch. `↓` is the number of upstream commits not present locally. A release is shown when the repository's latest GitHub release is available; `NEW` means that release commit is not an ancestor of the local `HEAD`.
+
+After the list, enter a repository number to inspect the remote commits that are not yet present locally. The script displays those commits with `git log` after fetching the remote references; it does not apply them. For example:
+
+```text
+Enter repository number to see commits (or 'x' to exit): 4
+
+Showing 4 commits from origin/main for ./projects/example-library:
+a1b2c3d4 fix: handle an example input safely
+b2c3d4e5 docs: clarify the fictional setup
+c3d4e5f6 test: cover the remote-status example
+d4e5f6a7 chore: refresh sample metadata
+```
+
+The commit hashes and messages above are fictional examples. In an actual run, they are read from the selected repository's configured upstream branch. Enter `x` to exit.
 
 ## Requirements
 
