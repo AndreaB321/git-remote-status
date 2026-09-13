@@ -9,7 +9,7 @@ The script only runs `git fetch`; it does not run `git pull`, merge, rebase, or 
 The following is representative output using fictional repository names and values; it was not captured from a user's machine:
 
 ```text
- 1. [LOCAL]        ↑-   ↓-    -                    ./projects/scratch-notes
+  1. [LOCAL]        ↑-   ↓-    -                    ./projects/scratch-notes
   2. [GITHUB]       ↑0   ↓0    v2.4.1               ./projects/example-service
   3. [GITHUB]       ↑1   ↓0    v1.8.0 NEW           ./projects/example-theme
   4. [GITHUB]       ↑0   ↓4    -                    ./projects/example-library
