@@ -1,8 +1,8 @@
 # git-remote-status
 
-A small Bash utility that scans local Git repositories, refreshes their remote references, and reports whether the checked-out branch is ahead of or behind its configured upstream. It can also show the commits available upstream without applying them locally.
+A small Bash utility that scans local Git repositories, refreshes their remote references, and reports whether the checked-out branch is ahead of or behind its configured upstream. It can show the commits available upstream and, on explicit request, pull a selected GitHub repository.
 
-The script only runs `git fetch`; it does not run `git pull`, merge, rebase, or modify the working tree.
+The initial scan only runs `git fetch`; it does not modify a working tree. A `git pull` is run only after selecting a GitHub repository and explicitly choosing `p` from its detail menu.
 
 ## Example output
 
@@ -19,19 +19,21 @@ This is representative output using fictional repository names, paths, versions,
 
 `↑` is the number of local commits not present in the upstream branch. `↓` is the number of upstream commits not present locally. A release is shown when the repository's latest GitHub release is available; `NEW` means that release commit is not an ancestor of the local `HEAD`.
 
-After the list, enter a repository number to inspect the remote commits that are not yet present locally. The script displays those commits with `git log` after fetching the remote references; it does not apply them. For example:
+After the list, enter a repository number to inspect the remote commits that are not yet present locally. Enter `r` to rescan all repositories and refresh their remote references, or `x` to exit. The detail menu displays commits with `git log`; use `b` to return to the cached list without another scan. GitHub repositories also offer `p` to run `git pull` for the selected repository. For example:
 
 ```text
-Enter repository number to see commits (or 'x' to exit): 4
+Enter repository number, 'r' to refresh, or 'x' to exit: 4
 
 Showing 4 commits from origin/main for ./projects/example-library:
 a1b2c3d4 fix: handle an example input safely
 b2c3d4e5 docs: clarify the fictional setup
 c3d4e5f6 test: cover the remote-status example
 d4e5f6a7 chore: refresh sample metadata
+
+Enter 'p' to pull, 'b' to go back, or 'x' to exit: b
 ```
 
-The commit hashes and messages above are fictional examples. In an actual run, they are read from the selected repository's configured upstream branch. Enter `x` to exit.
+The commit hashes and messages above are fictional examples. In an actual run, they are read from the selected repository's configured upstream branch. The `p` option is displayed only for repositories classified as `GITHUB`; other repository types offer only `b` and `x` in the detail menu.
 
 ## Requirements
 
@@ -46,7 +48,7 @@ The commit hashes and messages above are fictional examples. In an actual run, t
 ./git-remote-status.sh [directory]
 ```
 
-The directory defaults to the current directory. The script recursively finds Git repositories below it, fetches remote references, and prints a numbered list. Select a number to display the upstream commits that are not yet in the local branch, or enter `x` to exit.
+The directory defaults to the current directory. The script recursively finds Git repositories below it, fetches remote references, and prints a numbered list. Select a number to display the upstream commits that are not yet in the local branch, enter `r` to refresh the complete list, or enter `x` to exit. From a repository detail menu, enter `b` to return to the existing list; GitHub repositories additionally offer `p` to pull the selected repository.
 
 Example:
 
@@ -55,7 +57,7 @@ chmod +x git-remote-status.sh
 git-remote-status.sh "$HOME/projects"
 ```
 
-The script does not download changes into the working tree. To apply upstream changes, inspect them first and then run the appropriate Git command yourself, such as `git pull --ff-only`.
+The initial scan does not download changes into working trees. Choosing `p` explicitly runs `git pull` for the selected GitHub repository, using that repository's configured pull strategy. Inspect the pending commits before choosing it.
 
 ## Limitations
 
