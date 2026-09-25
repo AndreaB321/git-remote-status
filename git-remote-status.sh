@@ -62,13 +62,11 @@ while IFS= read -r gitdir; do
             # A repository may contain commits newer than the release tag while
             # still including the complete release. Check commit ancestry rather
             # than requiring HEAD to match the tag exactly.
-            release_commit=$(
+            if release_commit=$(
                 git -C "$repo" rev-parse \
                     "$latest_release^{commit}" \
                     2>/dev/null
-            )
-
-            if [[ -n "$release_commit" ]] &&
+            ) && [[ -n "$release_commit" ]] &&
                git -C "$repo" merge-base --is-ancestor \
                    "$release_commit" HEAD; then
                 release="$latest_release"
