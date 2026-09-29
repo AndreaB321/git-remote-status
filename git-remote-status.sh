@@ -7,6 +7,7 @@ declare -a types
 declare -a aheads
 declare -a behinds
 declare -a releases
+declare -a release_commits
 
 auto_fetch() {
     local repo=$1
@@ -19,6 +20,7 @@ scan_repositories() {
     aheads=()
     behinds=()
     releases=()
+    release_commits=()
 
     while IFS= read -r gitdir; do
     repo="${gitdir%/.git}"
@@ -103,6 +105,7 @@ scan_repositories() {
         aheads+=("$ahead")
         behinds+=("$behind")
         releases+=("$release")
+        release_commits+=("$release_commit")
     done < <(find "$BASE_DIR" -type d -name .git -prune -print)
 }
 
@@ -127,6 +130,7 @@ refresh_repository_status() {
     local upstream
     local ahead="-"
     local behind="-"
+    local release_commit=${release_commits[idx]}
 
     auto_fetch "$repo"
     if upstream=$(git -C "$repo" rev-parse \
@@ -136,6 +140,12 @@ refresh_repository_status() {
         read -r behind ahead < <(
             git -C "$repo" rev-list --left-right --count "$upstream...HEAD"
         )
+    elif [[ -n "$release_commit" ]]; then
+        read -r behind ahead < <(
+            git -C "$repo" rev-list --left-right --count "$release_commit...HEAD"
+        )
+        behind="${behind}~"
+        ahead="${ahead}~"
     fi
 
     aheads[idx]=$ahead
@@ -146,19 +156,26 @@ show_repository_commits() {
     local idx=$1
     local repo=${repos[idx]}
     local behind=${behinds[idx]}
+    local behind_count=${behind%\~}
     local upstream
 
-    if [[ "$behind" != "-" && "$behind" -gt 0 ]]; then
-        upstream=$(git -C "$repo" rev-parse \
+    if [[ "$behind" != "-" && "$behind_count" -gt 0 ]]; then
+        if upstream=$(git -C "$repo" rev-parse \
             --abbrev-ref \
             --symbolic-full-name '@{upstream}' \
-            2>/dev/null) || upstream=""
-        if [[ -n "$upstream" ]]; then
-            echo "Showing $behind commits from $upstream for ${repo}:"
-            git -C "$repo" log -"$behind" --oneline "$upstream" 2>/dev/null || \
+            2>/dev/null) && [[ -n "$upstream" ]]; then
+            echo "Showing $behind_count commits from $upstream for ${repo}:"
+            git -C "$repo" log -"$behind_count" --oneline "$upstream" 2>/dev/null || \
                 echo "Could not read the remote commit log"
         else
-            echo "Could not determine the configured upstream"
+            local release_commit=${release_commits[idx]}
+            if [[ -n "$release_commit" ]]; then
+                echo "Showing $behind_count commits from the latest release for ${repo}:"
+                git -C "$repo" log -"$behind_count" --oneline "$release_commit" 2>/dev/null || \
+                    echo "Could not read the release commit log"
+            else
+                echo "Could not determine the configured upstream"
+            fi
         fi
     else
         echo "No commits behind the configured upstream for this repository"
