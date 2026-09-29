@@ -35,22 +35,10 @@ scan_repositories() {
     ahead="-"
     behind="-"
     release="-"
+    release_commit=""
 
     if [[ "$type" != "LOCAL" ]]; then
         auto_fetch "$repo"
-
-        # Get the current upstream branch
-        if upstream=$(git -C "$repo" rev-parse \
-            --abbrev-ref \
-            --symbolic-full-name '@{upstream}' \
-            2>/dev/null) && [[ -n "$upstream" ]]; then
-            read -r behind ahead < <(
-                git -C "$repo" rev-list \
-                    --left-right \
-                    --count \
-                    "$upstream...HEAD"
-            )
-        fi
     fi
 
     # Check the latest GitHub release
@@ -78,6 +66,35 @@ scan_repositories() {
             else
                 release="$latest_release NEW"
             fi
+        fi
+    fi
+
+    if [[ "$type" != "LOCAL" ]]; then
+        # Get the current upstream branch
+        if upstream=$(git -C "$repo" rev-parse \
+            --abbrev-ref \
+            --symbolic-full-name '@{upstream}' \
+            2>/dev/null) && [[ -n "$upstream" ]]; then
+            read -r behind ahead < <(
+                git -C "$repo" rev-list \
+                    --left-right \
+                    --count \
+                    "$upstream...HEAD"
+            )
+        elif [[ -n "$release_commit" ]]; then
+            # No tracked branch (e.g. HEAD detached on a tag): fall back to
+            # comparing against the latest release commit so a pinned
+            # checkout still reports how far it trails the newest release.
+            # A trailing "~" marks these counts as relative to the release
+            # tag rather than a tracked upstream branch.
+            read -r behind ahead < <(
+                git -C "$repo" rev-list \
+                    --left-right \
+                    --count \
+                    "$release_commit...HEAD"
+            )
+            behind="${behind}~"
+            ahead="${ahead}~"
         fi
     fi
 
