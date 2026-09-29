@@ -35,6 +35,17 @@ Enter 'p' to pull, 'b' to go back, or 'x' to exit: b
 
 The commit hashes and messages above are fictional examples. In an actual run, they are read from the selected repository's configured upstream branch. The `p` option is displayed only for repositories classified as `GITHUB`; other repository types offer only `b` and `x` in the detail menu.
 
+## Performance
+
+Repositories are fetched and inspected concurrently (up to 8 at a time by
+default) rather than one at a time, so scans with many remote repositories
+complete faster. Set `GIT_REMOTE_STATUS_JOBS` to change the maximum number
+of concurrent jobs, for example:
+
+```bash
+GIT_REMOTE_STATUS_JOBS=16 ./git-remote-status.sh "$HOME/projects"
+```
+
 ## Requirements
 
 - Bash 4+

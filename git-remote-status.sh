@@ -2,6 +2,10 @@
 
 BASE_DIR="${1:-.}"
 
+# Maximum number of repositories fetched/inspected concurrently during a scan.
+# Override with the GIT_REMOTE_STATUS_JOBS environment variable if needed.
+MAX_PARALLEL_JOBS="${GIT_REMOTE_STATUS_JOBS:-8}"
+
 declare -a repos
 declare -a types
 declare -a aheads
@@ -14,16 +18,15 @@ auto_fetch() {
     git -C "$repo" fetch --prune --quiet 2>/dev/null
 }
 
-scan_repositories() {
-    repos=()
-    types=()
-    aheads=()
-    behinds=()
-    releases=()
-    release_commits=()
-
-    while IFS= read -r gitdir; do
-    repo="${gitdir%/.git}"
+# Computes the status of a single repository and writes it as a
+# tab-separated line to $outfile. Runs in a background subshell, so results
+# are communicated back to the parent via the file rather than variables.
+process_repository() {
+    local gitdir=$1
+    local outfile=$2
+    local repo="${gitdir%/.git}"
+    local type ahead="-" behind="-" release="-" release_commit=""
+    local upstream latest_release
 
     # Determine repository type
     if ! git -C "$repo" remote | grep -q .; then
@@ -33,11 +36,6 @@ scan_repositories() {
     else
         type="OTHER-REMOTE"
     fi
-
-    ahead="-"
-    behind="-"
-    release="-"
-    release_commit=""
 
     if [[ "$type" != "LOCAL" ]]; then
         auto_fetch "$repo"
@@ -100,13 +98,54 @@ scan_repositories() {
         fi
     fi
 
+    printf '%s\t%s\t%s\t%s\t%s\t%s\n' \
+        "$repo" "$type" "$ahead" "$behind" "$release" "$release_commit" \
+        > "$outfile"
+}
+
+scan_repositories() {
+    repos=()
+    types=()
+    aheads=()
+    behinds=()
+    releases=()
+    release_commits=()
+
+    local gitdirs=()
+    while IFS= read -r gitdir; do
+        gitdirs+=("$gitdir")
+    done < <(find "$BASE_DIR" -type d -name .git -prune -print)
+
+    local tmpdir
+    tmpdir=$(mktemp -d "${TMPDIR:-/tmp}/git-remote-status.XXXXXX")
+
+    # Fetch and inspect repositories concurrently (bounded by
+    # MAX_PARALLEL_JOBS) instead of one at a time; each background job
+    # writes its result to its own file so ordering can be restored
+    # afterwards regardless of completion order.
+    local i=0
+    for gitdir in "${gitdirs[@]}"; do
+        while (( $(jobs -rp | wc -l) >= MAX_PARALLEL_JOBS )); do
+            wait -n
+        done
+        process_repository "$gitdir" "$tmpdir/$i" &
+        ((i++))
+    done
+    wait
+
+    local j repo type ahead behind release release_commit
+    for ((j = 0; j < i; j++)); do
+        IFS=$'\t' read -r repo type ahead behind release release_commit \
+            < "$tmpdir/$j"
         repos+=("$repo")
         types+=("$type")
         aheads+=("$ahead")
         behinds+=("$behind")
         releases+=("$release")
         release_commits+=("$release_commit")
-    done < <(find "$BASE_DIR" -type d -name .git -prune -print)
+    done
+
+    rm -rf "$tmpdir"
 }
 
 print_repositories() {
